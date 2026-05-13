@@ -835,16 +835,13 @@ async function saveExpense() {
 
   setLoading('btnSaveExpense', true);
   try {
-    const insertPromise = db.from('expenses').insert({
+    const { error } = await db.from('expenses').insert({
       user_id: state.user.id, name: name || getCat(selectedCategory).label, amount, date, category: selectedCategory
-    }).select().single();
-    const timeoutPromise = new Promise((_, rej) => setTimeout(() => rej(new Error('Sin respuesta del servidor. ¿Proyecto Supabase pausado?')), 8000));
-    const { data, error } = await Promise.race([insertPromise, timeoutPromise]);
-
+    });
     if (error) throw error;
-    state.expenses.unshift(data);
     closeModal('modalDaily');
     showToast('Gasto guardado ✓');
+    await loadExpenses();
     const active = document.querySelector('.page.active').id.replace('page-', '');
     await renderPage(active);
   } catch (e) {
@@ -864,17 +861,21 @@ async function saveFixed() {
   if (!amount || amount <= 0) { showToast('Ingresa un monto válido'); return; }
 
   setLoading('btnSaveFixed', true);
-  const { data, error } = await db.from('fixed_expenses').insert({
-    user_id: state.user.id, name, amount, day, category: selectedFixedCategory
-  }).select().single();
-  setLoading('btnSaveFixed', false);
-  document.getElementById('btnSaveFixed').innerHTML = 'Guardar Gasto Fijo';
-
-  if (error) { showToast('Error al guardar'); return; }
-  state.fixedExpenses.push(data);
-  closeModal('modalFixed');
-  showToast('Gasto fijo guardado ✓');
-  await renderPage('fixed');
+  try {
+    const { error } = await db.from('fixed_expenses').insert({
+      user_id: state.user.id, name, amount, day, category: selectedFixedCategory
+    });
+    if (error) throw error;
+    closeModal('modalFixed');
+    showToast('Gasto fijo guardado ✓');
+    await loadFixed();
+    await renderPage('fixed');
+  } catch (e) {
+    showToast('Error: ' + (e.message || 'no se pudo guardar'));
+  } finally {
+    setLoading('btnSaveFixed', false);
+    document.getElementById('btnSaveFixed').innerHTML = 'Guardar Gasto Fijo';
+  }
 }
 
 async function deleteExpense(id) {
