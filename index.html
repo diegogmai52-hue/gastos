@@ -835,17 +835,25 @@ async function saveExpense() {
 
   setLoading('btnSaveExpense', true);
   try {
-    const { error } = await db.from('expenses').insert({
-      user_id: state.user.id, name: name || getCat(selectedCategory).label, amount, date, category: selectedCategory
-    });
-    if (error) throw error;
+    const newExpense = {
+      id: crypto.randomUUID(),
+      user_id: state.user.id,
+      name: name || getCat(selectedCategory).label,
+      amount, date, category: selectedCategory,
+      created_at: new Date().toISOString()
+    };
+    // Actualización optimista — mostrar inmediatamente
+    state.expenses.unshift(newExpense);
     closeModal('modalDaily');
     showToast('Gasto guardado ✓');
-    await loadExpenses();
     const active = document.querySelector('.page.active').id.replace('page-', '');
     await renderPage(active);
+    // Enviar a Supabase en background
+    db.from('expenses').insert({
+      user_id: newExpense.user_id, name: newExpense.name,
+      amount: newExpense.amount, date: newExpense.date, category: newExpense.category
+    }).then(({ error }) => { if (error) console.error('Supabase insert error:', error); });
   } catch (e) {
-    console.error('saveExpense error:', e);
     showToast('Error: ' + (e.message || 'no se pudo guardar'));
   } finally {
     setLoading('btnSaveExpense', false);
@@ -862,14 +870,20 @@ async function saveFixed() {
 
   setLoading('btnSaveFixed', true);
   try {
-    const { error } = await db.from('fixed_expenses').insert({
-      user_id: state.user.id, name, amount, day, category: selectedFixedCategory
-    });
-    if (error) throw error;
+    const newFixed = {
+      id: crypto.randomUUID(),
+      user_id: state.user.id,
+      name, amount, day, category: selectedFixedCategory,
+      created_at: new Date().toISOString()
+    };
+    state.fixedExpenses.push(newFixed);
     closeModal('modalFixed');
     showToast('Gasto fijo guardado ✓');
-    await loadFixed();
     await renderPage('fixed');
+    db.from('fixed_expenses').insert({
+      user_id: newFixed.user_id, name: newFixed.name,
+      amount: newFixed.amount, day: newFixed.day, category: newFixed.category
+    }).then(({ error }) => { if (error) console.error('Supabase insert fixed error:', error); });
   } catch (e) {
     showToast('Error: ' + (e.message || 'no se pudo guardar'));
   } finally {
