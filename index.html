@@ -911,27 +911,26 @@ function hideSplash() {
   setTimeout(() => splash.style.display = 'none', 300);
 }
 
-// Arranque rápido: leer sesión desde localStorage sin esperar red
-(async () => {
-  const { data: { session } } = await db.auth.getSession();
-  if (session?.user) {
-    await initApp(session.user);
-  }
-  hideSplash();
-})();
-
-// Escuchar cambios de sesión (refresco de token, logout, etc.)
-db.auth.onAuthStateChange(async (event, session) => {
-  if (event === 'SIGNED_IN' && session?.user && !state.user) {
-    await initApp(session.user);
+// Timeout de seguridad: si en 4s no cargó, mostrar login
+const splashTimeout = setTimeout(() => {
+  if (document.getElementById('splashScreen').style.display !== 'none') {
     hideSplash();
-  } else if (event === 'SIGNED_OUT') {
+  }
+}, 4000);
+
+// Escuchar cambios de sesión — esto dispara siempre al cargar la página
+db.auth.onAuthStateChange(async (event, session) => {
+  clearTimeout(splashTimeout);
+  if (session?.user) {
+    if (!state.user) await initApp(session.user);
+  } else {
     state.user = null;
     state.expenses = [];
     state.fixedExpenses = [];
     document.getElementById('appScreen').style.display = 'none';
     document.getElementById('authScreen').style.display = 'flex';
   }
+  hideSplash();
 });
 
 // Enter en inputs de auth
