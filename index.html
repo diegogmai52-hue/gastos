@@ -901,6 +901,13 @@ async function initApp(user) {
   document.getElementById('authScreen').style.display = 'none';
   document.getElementById('appScreen').style.display = 'block';
   updateMonthLabel();
+
+  // Asegurar que siempre arranca en Inicio
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('page-home').classList.add('active');
+  document.querySelector('.nav-btn:first-child').classList.add('active');
+
   await loadAll();
   await renderHome();
 }
