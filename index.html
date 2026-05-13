@@ -911,24 +911,28 @@ function hideSplash() {
   setTimeout(() => splash.style.display = 'none', 300);
 }
 
-// Timeout de seguridad: si en 2s no cargó, mostrar login
-const splashTimeout = setTimeout(() => {
+// El splash siempre desaparece — pase lo que pase
+function showAuth() {
+  document.getElementById('appScreen').style.display = 'none';
+  document.getElementById('authScreen').style.display = 'flex';
   hideSplash();
-}, 2000);
+}
 
-// Escuchar cambios de sesión — esto dispara siempre al cargar la página
+// Timeout duro: 3s máximo sin importar nada
+setTimeout(hideSplash, 3000);
+
 db.auth.onAuthStateChange(async (event, session) => {
-  clearTimeout(splashTimeout);
-  if (session?.user) {
-    if (!state.user) await initApp(session.user);
-  } else {
-    state.user = null;
-    state.expenses = [];
-    state.fixedExpenses = [];
-    document.getElementById('appScreen').style.display = 'none';
-    document.getElementById('authScreen').style.display = 'flex';
+  try {
+    if (session?.user) {
+      if (!state.user) await initApp(session.user);
+      hideSplash();
+    } else if (event === 'INITIAL_SESSION' || event === 'SIGNED_OUT') {
+      showAuth();
+    }
+  } catch (e) {
+    console.error('Auth error:', e);
+    showAuth();
   }
-  hideSplash();
 });
 
 // Enter en inputs de auth
