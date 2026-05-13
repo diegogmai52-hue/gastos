@@ -526,44 +526,26 @@ async function handleLogout() {
   document.getElementById('authScreen').style.display = 'flex';
 }
 
-// ─── CACHE ───────────────────────────────────────────────────────────
-function cacheKey(type) { return `gastos_${type}_${state.user?.id}`; }
-function saveCache() {
-  localStorage.setItem(cacheKey('expenses'), JSON.stringify(state.expenses));
-  localStorage.setItem(cacheKey('fixed'), JSON.stringify(state.fixedExpenses));
-}
-function loadCache() {
-  try {
-    state.expenses = JSON.parse(localStorage.getItem(cacheKey('expenses'))) || [];
-    state.fixedExpenses = JSON.parse(localStorage.getItem(cacheKey('fixed'))) || [];
-  } catch { state.expenses = []; state.fixedExpenses = []; }
+// ─── STORAGE LOCAL (fuente de verdad) ────────────────────────────────
+function storageKey(type) { return `gastos_v3_${type}_${state.user?.id}`; }
+
+function saveData() {
+  localStorage.setItem(storageKey('expenses'), JSON.stringify(state.expenses));
+  localStorage.setItem(storageKey('fixed'), JSON.stringify(state.fixedExpenses));
 }
 
-// ─── DATA ────────────────────────────────────────────────────────────
-async function loadExpenses() {
+function loadData() {
   try {
-    const ctrl = new AbortController();
-    const timeout = setTimeout(() => ctrl.abort(), 5000);
-    const { data } = await db.from('expenses').select('*').eq('user_id', state.user.id).order('date', { ascending: false }).abortSignal(ctrl.signal);
-    clearTimeout(timeout);
-    if (data) { state.expenses = data; saveCache(); }
-  } catch { /* usa caché */ }
-}
-
-async function loadFixed() {
-  try {
-    const ctrl = new AbortController();
-    const timeout = setTimeout(() => ctrl.abort(), 5000);
-    const { data } = await db.from('fixed_expenses').select('*').eq('user_id', state.user.id).order('created_at').abortSignal(ctrl.signal);
-    clearTimeout(timeout);
-    if (data) { state.fixedExpenses = data; saveCache(); }
-  } catch { /* usa caché */ }
+    state.expenses = JSON.parse(localStorage.getItem(storageKey('expenses'))) || [];
+    state.fixedExpenses = JSON.parse(localStorage.getItem(storageKey('fixed'))) || [];
+  } catch {
+    state.expenses = [];
+    state.fixedExpenses = [];
+  }
 }
 
 async function loadAll() {
-  loadCache(); // inmediato desde localStorage
-  await Promise.all([loadExpenses(), loadFixed()]); // sync en background
-  saveCache();
+  loadData(); // siempre instantáneo desde localStorage
 }
 
 // ─── NAVIGATION ──────────────────────────────────────────────────────
@@ -869,7 +851,7 @@ async function saveExpense() {
     };
     // Actualización optimista — mostrar y cachear inmediatamente
     state.expenses.unshift(newExpense);
-    saveCache();
+    saveData();
     closeModal('modalDaily');
     showToast('Gasto guardado ✓');
     const active = document.querySelector('.page.active').id.replace('page-', '');
@@ -903,7 +885,7 @@ async function saveFixed() {
       created_at: new Date().toISOString()
     };
     state.fixedExpenses.push(newFixed);
-    saveCache();
+    saveData();
     closeModal('modalFixed');
     showToast('Gasto fijo guardado ✓');
     await renderPage('fixed');
@@ -922,7 +904,7 @@ async function saveFixed() {
 async function deleteExpense(id) {
   if (!confirm('¿Eliminar este gasto?')) return;
   state.expenses = state.expenses.filter(e => e.id !== id);
-  saveCache();
+  saveData();
   showToast('Eliminado');
   const active = document.querySelector('.page.active').id.replace('page-', '');
   await renderPage(active);
@@ -932,7 +914,7 @@ async function deleteExpense(id) {
 async function deleteFixed(id) {
   if (!confirm('¿Eliminar este gasto fijo?')) return;
   state.fixedExpenses = state.fixedExpenses.filter(e => e.id !== id);
-  saveCache();
+  saveData();
   showToast('Eliminado');
   await renderPage('fixed');
   db.from('fixed_expenses').delete().eq('id', id).then(({ error }) => { if (error) console.error(error); });
