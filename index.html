@@ -901,7 +901,6 @@ async function initApp(user) {
   document.getElementById('authScreen').style.display = 'none';
   document.getElementById('appScreen').style.display = 'block';
   updateMonthLabel();
-  document.getElementById('page-home').innerHTML = '<div class="page-loading"><div class="spinner"></div></div>';
   await loadAll();
   await renderHome();
 }
@@ -912,17 +911,26 @@ function hideSplash() {
   setTimeout(() => splash.style.display = 'none', 300);
 }
 
-// Escuchar cambios de sesión
-db.auth.onAuthStateChange(async (event, session) => {
+// Arranque rápido: leer sesión desde localStorage sin esperar red
+(async () => {
+  const { data: { session } } = await db.auth.getSession();
   if (session?.user) {
+    await initApp(session.user);
+  }
+  hideSplash();
+})();
+
+// Escuchar cambios de sesión (refresco de token, logout, etc.)
+db.auth.onAuthStateChange(async (event, session) => {
+  if (event === 'SIGNED_IN' && session?.user && !state.user) {
     await initApp(session.user);
     hideSplash();
   } else if (event === 'SIGNED_OUT') {
+    state.user = null;
+    state.expenses = [];
+    state.fixedExpenses = [];
     document.getElementById('appScreen').style.display = 'none';
     document.getElementById('authScreen').style.display = 'flex';
-  } else {
-    // Sin sesión — mostrar login
-    hideSplash();
   }
 });
 
