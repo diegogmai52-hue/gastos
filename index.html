@@ -6,7 +6,7 @@
   <meta name="mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <title>Controlador de Gastos</title>
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.49.4/dist/umd/supabase.js"></script>
   <style>
     :root {
       --bg: #0f1117;
@@ -911,12 +911,10 @@ function hideSplash() {
   setTimeout(() => splash.style.display = 'none', 300);
 }
 
-// Timeout de seguridad: si en 4s no cargó, mostrar login
+// Timeout de seguridad: si en 2s no cargó, mostrar login
 const splashTimeout = setTimeout(() => {
-  if (document.getElementById('splashScreen').style.display !== 'none') {
-    hideSplash();
-  }
-}, 4000);
+  hideSplash();
+}, 2000);
 
 // Escuchar cambios de sesión — esto dispara siempre al cargar la página
 db.auth.onAuthStateChange(async (event, session) => {
