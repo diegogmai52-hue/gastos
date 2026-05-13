@@ -835,9 +835,11 @@ async function saveExpense() {
 
   setLoading('btnSaveExpense', true);
   try {
-    const { data, error } = await db.from('expenses').insert({
+    const insertPromise = db.from('expenses').insert({
       user_id: state.user.id, name: name || getCat(selectedCategory).label, amount, date, category: selectedCategory
     }).select().single();
+    const timeoutPromise = new Promise((_, rej) => setTimeout(() => rej(new Error('Sin respuesta del servidor. ¿Proyecto Supabase pausado?')), 8000));
+    const { data, error } = await Promise.race([insertPromise, timeoutPromise]);
 
     if (error) throw error;
     state.expenses.unshift(data);
