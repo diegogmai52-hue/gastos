@@ -6,7 +6,7 @@
   <meta name="mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <title>Controlador de Gastos</title>
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.49.4/dist/umd/supabase.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
   <style>
     :root {
       --bg: #0f1117;
@@ -831,20 +831,27 @@ async function saveExpense() {
   const date = document.getElementById('dailyDate').value;
   if (!amount || amount <= 0) { showToast('Ingresa un monto válido'); return; }
   if (!date) { showToast('Selecciona una fecha'); return; }
+  if (!state.user) { showToast('Sesión expirada, recarga la página'); return; }
 
   setLoading('btnSaveExpense', true);
-  const { data, error } = await db.from('expenses').insert({
-    user_id: state.user.id, name: name || getCat(selectedCategory).label, amount, date, category: selectedCategory
-  }).select().single();
-  setLoading('btnSaveExpense', false);
-  document.getElementById('btnSaveExpense').innerHTML = 'Guardar Gasto';
+  try {
+    const { data, error } = await db.from('expenses').insert({
+      user_id: state.user.id, name: name || getCat(selectedCategory).label, amount, date, category: selectedCategory
+    }).select().single();
 
-  if (error) { showToast('Error al guardar'); return; }
-  state.expenses.unshift(data);
-  closeModal('modalDaily');
-  showToast('Gasto guardado ✓');
-  const active = document.querySelector('.page.active').id.replace('page-', '');
-  await renderPage(active);
+    if (error) throw error;
+    state.expenses.unshift(data);
+    closeModal('modalDaily');
+    showToast('Gasto guardado ✓');
+    const active = document.querySelector('.page.active').id.replace('page-', '');
+    await renderPage(active);
+  } catch (e) {
+    console.error('saveExpense error:', e);
+    showToast('Error: ' + (e.message || 'no se pudo guardar'));
+  } finally {
+    setLoading('btnSaveExpense', false);
+    document.getElementById('btnSaveExpense').innerHTML = 'Guardar Gasto';
+  }
 }
 
 async function saveFixed() {
