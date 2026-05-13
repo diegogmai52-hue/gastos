@@ -114,14 +114,32 @@
     .hero-progress-bar { height: 4px; background: var(--border); border-radius: 2px; overflow: hidden; }
     .hero-progress-fill { height: 100%; border-radius: 2px; background: var(--accent); transition: width 0.5s; }
     .hero-progress-fill.danger { background: var(--red); }
-    .hero-row { display: flex; gap: 12px; margin-top: 16px; }
-    .hero-stat { flex: 1; background: var(--surface2); border-radius: var(--radius-sm); padding: 12px; }
-    .hero-stat-label { font-size: 11px; color: var(--text2); margin-bottom: 4px; }
-    .hero-stat-value { font-size: 16px; font-weight: 700; }
+    .hero-row {
+      display: flex; gap: 10px; margin-top: 16px;
+      overflow-x: auto; scroll-snap-type: x mandatory;
+      -webkit-overflow-scrolling: touch; scrollbar-width: none;
+      padding-bottom: 2px; margin-left: -2px; margin-right: -2px; padding-left: 2px; padding-right: 2px;
+    }
+    .hero-row::-webkit-scrollbar { display: none; }
+    .hero-stat {
+      flex: 0 0 calc(33% - 4px); scroll-snap-align: start;
+      background: var(--surface2); border-radius: var(--radius-sm); padding: 12px;
+      min-width: 88px;
+    }
+    .hero-stat-label { font-size: 11px; color: var(--text2); margin-bottom: 4px; white-space: nowrap; }
+    .hero-stat-value { font-size: 15px; font-weight: 700; white-space: nowrap; }
     .hero-stat-value.red { color: var(--red); }
     .hero-stat-value.orange { color: var(--orange); }
     .hero-stat-value.green { color: var(--green); }
     .hero-stat-value.blue { color: var(--accent); }
+    .hero-scroll-hint {
+      display: flex; justify-content: center; gap: 5px; margin-top: 10px;
+    }
+    .hero-scroll-hint span {
+      width: 5px; height: 5px; border-radius: 50%;
+      background: var(--border); transition: background 0.2s;
+    }
+    .hero-scroll-hint span.active { background: var(--accent); width: 14px; border-radius: 3px; }
 
     /* ─── Action buttons (Buy/Deposit style) ─── */
     .action-row { display: flex; gap: 10px; margin-bottom: 20px; }
@@ -640,7 +658,7 @@ async function renderHome() {
           <div class="hero-progress-fill ${danger ? 'danger' : ''}" style="width:${pct}%"></div>
         </div>
       </div>
-      <div class="hero-row">
+      <div class="hero-row" id="heroStatsRow">
         <div class="hero-stat">
           <div class="hero-stat-label">Variables</div>
           <div class="hero-stat-value red">${fmt(totalDaily)}</div>
@@ -657,6 +675,9 @@ async function renderHome() {
           <div class="hero-stat-label">Proyección</div>
           <div class="hero-stat-value blue">${fmt(projectedEnd)}</div>
         </div>
+      </div>
+      <div class="hero-scroll-hint" id="heroScrollDots">
+        <span class="active"></span><span></span>
       </div>
     </div>
     <div class="action-row">
@@ -686,6 +707,19 @@ async function renderHome() {
       ? `<div class="empty-state"><div class="emoji">📭</div><p>Sin gastos este mes.<br>¡Toca Registrar para añadir uno!</p></div>`
       : `<div class="expense-card">${recent.map(e => renderExpenseItem(e)).join('')}</div>`}
   `;
+  requestAnimationFrame(initHeroScroll);
+}
+
+function initHeroScroll() {
+  const row = document.getElementById('heroStatsRow');
+  const dots = document.getElementById('heroScrollDots');
+  if (!row || !dots) return;
+  const d = dots.querySelectorAll('span');
+  row.addEventListener('scroll', () => {
+    const pct = row.scrollLeft / (row.scrollWidth - row.clientWidth);
+    d[0].classList.toggle('active', pct < 0.5);
+    d[1].classList.toggle('active', pct >= 0.5);
+  }, { passive: true });
 }
 
 // ─── DAILY ───────────────────────────────────────────────────────────
